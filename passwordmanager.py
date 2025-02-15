@@ -1,5 +1,5 @@
 '''CS50x final Project
-\password manager
+\\password manager
 
 Core features:
 1. saving passwords (hashed)
@@ -12,12 +12,16 @@ Core features:
 
 plan:
 1. create datbase
-2. create'''
+2. create
+
+'''
 
 import graphics
+import sqlite3
+from pathlib import Path
 
 def main() -> None:
-    ...
+    read_In__Create_Database()
 
 
 def insert_Data() -> None:
@@ -31,8 +35,23 @@ def hashing(input) -> str:
 def retrieve_Data() -> None:
     ...
 
+def read_In__Create_Database(database="test.db", schema="./schema/schema.sql") -> None:
 
+    connection = sqlite3.connect(database)
+    cursor = connection.cursor()
 
+    schema_path = Path(schema)
+    if not schema_path.is_file():
+        print(f"Schema file not found: {schema_path}")
+        return
+
+    with open(schema_path, 'r') as schema_file:
+        schema = schema_file.read()
+
+    cursor.executescript(schema)
+
+    connection.commit()
+    connection.close()
 
 
 if __name__ == "__main__":
