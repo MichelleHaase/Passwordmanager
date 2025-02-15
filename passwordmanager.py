@@ -20,8 +20,23 @@ import graphics
 import sqlite3
 from pathlib import Path
 
+
 def main() -> None:
-    read_In__Create_Database()
+    key = input("Masterpassword: ").strip()
+    connection = None
+    if Path("./Database.db").is_file():
+        # decript file
+        connection = read_In_Database()
+    else:
+        connection = create_Database()
+    if connection == None:
+        print("Unknown Error, no Database loaded or created")
+    # Master password already set?
+    
+    if connection:
+            connection.close()
+            # encrypt
+            print("Database connection closed")
 
 
 def insert_Data() -> None:
@@ -35,11 +50,22 @@ def hashing(input) -> str:
 def retrieve_Data() -> None:
     ...
 
-def read_In__Create_Database(database="test.db", schema="./schema/schema.sql") -> None:
 
-    connection = sqlite3.connect(database)
+def read_In_Database() -> None | sqlite3.Connection:
+    connection = sqlite3.connect(database="Database.db")
     cursor = connection.cursor()
 
+    connection.commit()
+    print("Database loaded")
+
+    return connection
+
+
+
+def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
+
+    connection = sqlite3.connect(database="Database.db")
+    cursor = connection.cursor()
     schema_path = Path(schema)
     if not schema_path.is_file():
         print(f"Schema file not found: {schema_path}")
@@ -49,9 +75,13 @@ def read_In__Create_Database(database="test.db", schema="./schema/schema.sql") -
         schema = schema_file.read()
 
     cursor.executescript(schema)
-
     connection.commit()
-    connection.close()
+    print("Database created")
+
+    return connection
+
+
+
 
 
 if __name__ == "__main__":

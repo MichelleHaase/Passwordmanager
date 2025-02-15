@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS Passwords (
 	password_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	password TEXT NOT NULL UNIQUE,
-	"date" TEXT -- needs to be yyyy-mm-dd or won't be properly seen by ORDER BY etc
+	"date" DATE -- needs to be yyyy-mm-dd or won't be properly seen by ORDER BY etc
 	-- SELECT id, strftime('%d-%m-%Y', date) AS formatted_date FROM your_table; will retrieve it in dd-mm-yyyy
 	);
 	
@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS Username (
 	username_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	password_id INTEGER,
 	username TEXT,
-	email TEXT ,
-	"date" TEXT,
+	email TEXT,
+	"date" DATE,
 	FOREIGN KEY (password_id) REFERENCES Passwords(password_id) -- not deleting on Cascade since i don't want userID in passwords
 	);
 	
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS Username (
 CREATE TABLE IF NOT EXISTS Notes (
 	note_id INTEGER PRIMARY KEY AUTOINCREMENT,
 	note TEXT,
-	"date" TEXT
+	"date" DATE
 	);
 	
 	
