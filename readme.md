@@ -1,5 +1,5 @@
 # Password Manager
-* CLI or TKinter?
+*TKinter?
 Core CS50x Concepts: File I/O, encryption, SQL, security, command-line interfaces.
 Steps:
 
