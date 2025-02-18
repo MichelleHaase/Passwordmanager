@@ -22,7 +22,6 @@ from pathlib import Path
 from argon2 import PasswordHasher
 
 def main() -> None:
-    ph = PasswordHasher()
     key = input("Masterpassword: ").strip()
     connection = None
     if Path("./Database.db").is_file():
@@ -33,9 +32,7 @@ def main() -> None:
     if connection == None:
         print("Unknown Error, no Database loaded or created")
     password = input("Password? ")
-    hashed_password = hashing(password)
-    print(ph.verify(hashed_password, password))
-    print(hashed_password)
+
     # Master password already set?
     
     if connection:
@@ -43,18 +40,17 @@ def main() -> None:
             # encrypt
             print("Database connection closed")
 
+def menu():
+    # menu for choosing what to do, no clue how to do that oop
+    ...
+
 
 def insert_Data() -> None:
     ...
 
 
 def hashing(input) -> str:
-    ph = PasswordHasher()
-    hash = ph.hash(input)
-    if (ph.verify(hash, input)):
-        return hash
-    else:
-        sys.exit("Hashing failed")
+    ...
 
 
 
