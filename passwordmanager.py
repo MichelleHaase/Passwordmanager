@@ -15,13 +15,14 @@ plan:
 2. create
 
 '''
-
+import sys
 import graphics
 import sqlite3
 from pathlib import Path
-
+from argon2 import PasswordHasher
 
 def main() -> None:
+    ph = PasswordHasher()
     key = input("Masterpassword: ").strip()
     connection = None
     if Path("./Database.db").is_file():
@@ -31,6 +32,10 @@ def main() -> None:
         connection = create_Database()
     if connection == None:
         print("Unknown Error, no Database loaded or created")
+    password = input("Password? ")
+    hashed_password = hashing(password)
+    print(ph.verify(hashed_password, password))
+    print(hashed_password)
     # Master password already set?
     
     if connection:
@@ -44,7 +49,13 @@ def insert_Data() -> None:
 
 
 def hashing(input) -> str:
-    ...
+    ph = PasswordHasher()
+    hash = ph.hash(input)
+    if (ph.verify(hash, input)):
+        return hash
+    else:
+        sys.exit("Hashing failed")
+
 
 
 def retrieve_Data() -> None:
