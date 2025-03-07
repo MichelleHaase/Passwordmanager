@@ -15,26 +15,34 @@ plan:
 2. create
 
 '''
-import sys
-import graphics
-import sqlite3
-from pathlib import Path
+import sys #TODO WHY??
+
 from argon2 import PasswordHasher
+import base64
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import os
+from pathlib import Path
+import sqlite3
+
+import graphics
+
+
 
 def main() -> None:
-    key = input("Masterpassword: ").strip()
-    connection = None
-    if Path("./Database.db").is_file():
-        # decript file
-        connection = read_In_Database()
-    else:
-        connection = create_Database()
-    if connection == None:
-        print("Unknown Error, no Database loaded or created")
-    password = input("Password? ")
+    # set salt for password hashing   
+    password = input("Masterpassword: ").strip()
+    connection = database_connection()
+
+    salt = os.urandom(16)
+    key = create_key(password, salt)
 
     # Master password already set?
-    
+    cipher = Fernet(key)
+
+    encrypted_data = cipher.encrypt(connection)
     if connection:
             connection.close()
             # encrypt
@@ -49,8 +57,13 @@ def insert_Data() -> None:
     ...
 
 
-def hashing(input) -> str:
-    ...
+
+def create_key(password, salt) -> str:
+    kdf = PBKDF2HMAC(algorithm=hashes.SHA3_256(), length=32, 
+                 salt=salt, iterations=100000, backend=default_backend())
+    kdf_key = kdf.derive(password.encode("utf-8"))
+
+    return base64.urlsafe_b64encode(kdf_key)
 
 
 
@@ -84,6 +97,22 @@ def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
     cursor.executescript(schema)
     connection.commit()
     print("Database created")
+
+    return connection
+
+
+def database_connection() -> sqlite3.Connection:
+    """Create Database connection"""
+    # opening/ creating Database
+    connection = None
+    if Path("./Database.db").is_file():
+        connection = read_In_Database()
+    else:
+        connection = create_Database()
+
+    # abort when no Database is found or created
+    if connection == None:
+        sys.exit("Unknown Error, no Database loaded or created")
 
     return connection
 
