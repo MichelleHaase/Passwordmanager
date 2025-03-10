@@ -42,10 +42,7 @@ def main() -> None:
     
     encrypt_Database(connection, hash)
     # close connection
-    if connection:
-            connection.close()
-            # encrypt
-            print("Database connection closed")
+    
 
 def menu():
     # menu for choosing what to do, no clue how to do that oop
@@ -79,7 +76,7 @@ def create_key_hash(password, salt) -> str:
 
 def encrypt_Database(connection, key) -> None:
     """encrypt Database and save it as Database.enc"""
-    cursor = connection.cursor()
+
     with open("Database.db", "rb") as f:
         database = f.read()
 
@@ -93,6 +90,11 @@ def encrypt_Database(connection, key) -> None:
 
     connection.commit()
     print("Database saved")
+    if connection:
+            connection.close()
+            print("Database connection closed")
+    os.remove("Database.db")
+    print("Database deleted")
 
 def retrieve_Data() -> None:
     ...
