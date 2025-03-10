@@ -19,7 +19,7 @@ import sys
 
 from argon2 import PasswordHasher
 import base64
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -32,14 +32,16 @@ import graphics
 
 
 def main() -> None:
-    # set salt for password hashing   
-    password = input("Masterpassword: ").strip() 
-    salt = create_salt()
-    hash = create_key_hash(password, salt)
-    connection = database_connection(hash)
-
-    print("Database connection established")
-    
+    # set salt for password hashing 
+    while True:  
+        password = input("Masterpassword: ").strip() 
+        salt = create_salt()
+        hash = create_key_hash(password, salt)
+        connection = database_connection(hash)
+        if connection:
+            print("Database connection established")
+            break
+ 
     encrypt_Database(connection, hash)
     # close connection
     
@@ -105,12 +107,16 @@ def verify_Masterpassword() -> bool:
 def read_In_Database(key) -> None | sqlite3.Connection:
     """decrypt Database and return connection"""
     ## Assunming that Masterpassword is already verfied? maybe saving the Hash somewhere? TODO
+    try:
+        with open("Database.enc", "rb") as f:
+            encrypted_database = f.read()
+        cipher = Fernet(key)
 
-    with open("Database.enc", "rb") as f:
-        encrypted_database = f.read()
-    cipher = Fernet(key)
+        decrypted_database = cipher.decrypt(encrypted_database)
 
-    decrypted_database = cipher.decrypt(encrypted_database)
+    except InvalidToken:
+        print("Masterpassword incorrect")
+        return
 
     with open("Database.db", "wb") as f:
         f.write(decrypted_database)
@@ -157,7 +163,7 @@ def database_connection(hash) -> sqlite3.Connection:
 
     # abort when no Database is found or created
     if connection == None:
-        sys.exit("Unknown Error, no Database loaded or created")
+        return None
 
     return connection
 
