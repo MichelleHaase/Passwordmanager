@@ -15,7 +15,7 @@ plan:
 2. create
 
 '''
-import sys #TODO WHY??
+import sys
 
 from argon2 import PasswordHasher
 import base64
@@ -33,16 +33,15 @@ import graphics
 
 def main() -> None:
     # set salt for password hashing   
-    password = input("Masterpassword: ").strip()
-    connection = database_connection()
+    password = input("Masterpassword: ").strip() 
+    salt = create_salt()
+    hash = create_key_hash(password, salt)
+    connection = database_connection(hash)
 
-    salt = os.urandom(16)
-    key = create_key(password, salt)
-
-    # Master password already set?
-    cipher = Fernet(key)
-
-    encrypted_data = cipher.encrypt(connection)
+    print("Database connection established")
+    
+    encrypt_Database(connection, hash)
+    # close connection
     if connection:
             connection.close()
             # encrypt
@@ -57,21 +56,64 @@ def insert_Data() -> None:
     ...
 
 
+def create_salt() -> bytes:
+    """ salt for password hashing saved in salt.bin"""
 
-def create_key(password, salt) -> str:
+    if Path("salt.bin").is_file():
+        with open("salt.bin", "rb") as salt_file:
+            salt = salt_file.read()
+            return salt
+    
+    salt = os.urandom(16)
+    with open("salt.bin", "wb") as f:
+            f.write(salt)
+    return salt
+
+
+def create_key_hash(password, salt) -> str:
     kdf = PBKDF2HMAC(algorithm=hashes.SHA3_256(), length=32, 
                  salt=salt, iterations=100000, backend=default_backend())
     kdf_key = kdf.derive(password.encode("utf-8"))
 
     return base64.urlsafe_b64encode(kdf_key)
 
+def encrypt_Database(connection, key) -> None:
+    """encrypt Database and save it as Database.enc"""
+    cursor = connection.cursor()
+    with open("Database.db", "rb") as f:
+        database = f.read()
 
+    cipher = Fernet(key)
+    encrypted_database = cipher.encrypt(database)
+
+    with open("Database.enc", "wb") as f:
+        f.write(encrypted_database)
+
+    print("Database encrypted")
+
+    connection.commit()
+    print("Database saved")
 
 def retrieve_Data() -> None:
     ...
 
+def verify_Masterpassword() -> bool:
+    ...
 
-def read_In_Database() -> None | sqlite3.Connection:
+def read_In_Database(key) -> None | sqlite3.Connection:
+    """decrypt Database and return connection"""
+    ## Assunming that Masterpassword is already verfied? maybe saving the Hash somewhere? TODO
+
+    with open("Database.enc", "rb") as f:
+        encrypted_database = f.read()
+    cipher = Fernet(key)
+
+    decrypted_database = cipher.decrypt(encrypted_database)
+
+    with open("Database.db", "wb") as f:
+        f.write(decrypted_database)
+    print("Database decrypted")
+
     connection = sqlite3.connect(database="Database.db")
     cursor = connection.cursor()
 
@@ -83,6 +125,7 @@ def read_In_Database() -> None | sqlite3.Connection:
 
 
 def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
+    """Create Database and return connection according to schema"""
 
     connection = sqlite3.connect(database="Database.db")
     cursor = connection.cursor()
@@ -101,12 +144,12 @@ def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
     return connection
 
 
-def database_connection() -> sqlite3.Connection:
+def database_connection(hash) -> sqlite3.Connection:
     """Create Database connection"""
     # opening/ creating Database
     connection = None
-    if Path("./Database.db").is_file():
-        connection = read_In_Database()
+    if Path("./Database.enc").is_file():
+        connection = read_In_Database(hash)
     else:
         connection = create_Database()
 
