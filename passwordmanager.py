@@ -98,12 +98,31 @@ def insert_Data(connection) -> None:
             
     db = connection.cursor()
     if login_title:
-        db.execute("INSERT INTO login (title, username, password, website, email) VALUES (?, ?, ?, ?, ?)", 
-            (login_title, login_Username, login_Password, login_Website, login_Email))
+        db.execute("INSERT OR IGNORE INTO Passwords (passwords) VALUES (?)", (login_Password,))
+        password_id = db.execute("SELECT id FROM Passwords WHERE passwords = ?", (login_Password,)).fetchone()[0]
+        db.execute("INSERT OR IGNORE INTO Username (username) VALUES (?)", (login_Username,))
+        username_id = db.execute("SELECT id FROM Username WHERE username = ?", (login_Username,)).fetchone()[0]       
+        db.execute("INSERT OR IGNORE INTO Mails (mail) VALUES (?)", (login_Email,))
+        mail_id = db.execute("SELECT id FROM Mails WHERE mail = ?", (login_Email,)).fetchone()[0]
+        db.execute("INSERT INTO Logins (title, username_id, password_id, website, mail_id) VALUES (?, ?, ?, ?, ?)", 
+            (login_title, username_id, password_id, login_Website, mail_id))
         
     elif Note_title:
         db.execute("INSERT INTO notes (title, note) VALUES (?, ?)", (Note_title, Note_text))
     connection.commit()
+
+    while True:
+        print("1. Add more Entries")
+        print("2. Back")
+        choice = input("Choose: ")
+
+        if choice == "1":
+            insert_Data(connection)
+        elif choice == "2":
+            break
+        else:
+            print("Invalid choice")
+            continue
 
 
 def retrieve_Data() -> None:
@@ -197,7 +216,7 @@ def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
 
     cursor.executescript(schema)
     connection.commit()
-    # print("Database created")
+    print("Database created")
 
     return connection
 

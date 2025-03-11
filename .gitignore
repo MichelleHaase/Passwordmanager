@@ -1,2 +1,4 @@
 Database.enc
 salt.bin
+testingstuff.py
+*.db
