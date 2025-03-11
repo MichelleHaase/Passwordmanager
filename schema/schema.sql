@@ -1,31 +1,34 @@
 CREATE TABLE IF NOT EXISTS Passwords (
-	password_id INTEGER PRIMARY KEY AUTOINCREMENT,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	password TEXT NOT NULL UNIQUE,
 	"date" DATE -- needs to be yyyy-mm-dd or won't be properly seen by ORDER BY etc
 	-- SELECT id, strftime('%d-%m-%Y', date) AS formatted_date FROM your_table; will retrieve it in dd-mm-yyyy
 	);
-	
-	
+
 CREATE TABLE IF NOT EXISTS Username (
-	username_id INTEGER PRIMARY KEY AUTOINCREMENT,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	username TEXT NOT NULL UNIQUE,
+	"date" DATE
+	);
+	
+	
+CREATE TABLE IF NOT EXISTS Logins (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	username_id INTEGER,
 	password_id INTEGER,
+	title TEXT,
 	username TEXT,
 	email TEXT,
 	"date" DATE,
-	FOREIGN KEY (password_id) REFERENCES Passwords(password_id) -- not deleting on Cascade since i don't want userID in passwords
+	FOREIGN KEY (username_id) REFERENCES Username(id) ON DELETE RESTRICT
+	FOREIGN KEY (password_id) REFERENCES Passwords(id) ON DELETE RESTRICT
 	);
 	
 
 CREATE TABLE IF NOT EXISTS Notes (
 	note_id INTEGER PRIMARY KEY AUTOINCREMENT,
-	note TEXT,
+	note TEXT NOT NULL,
 	"date" DATE
-	);
-	
-	
-CREATE TABLE IF NOT EXISTS Websites (
-	website_id INTEGER PRIMARY KEY AUTOINCREMENT,
-	address TEXT	
 	);
 	
 	

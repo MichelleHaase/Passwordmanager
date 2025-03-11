@@ -16,6 +16,7 @@ plan:
 
 '''
 import sys
+from tkinter import E, N
 
 from argon2 import PasswordHasher
 import base64
@@ -23,6 +24,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from getpass import getpass
 import os
 from pathlib import Path
 import sqlite3
@@ -34,26 +36,78 @@ import graphics
 def main() -> None:
     # set salt for password hashing 
     while True:  
-        password = input("Masterpassword: ").strip() 
+        password = getpass("Masterpassword: ").strip() 
         salt = create_salt()
         hash = create_key_hash(password, salt)
         connection = database_connection(hash)
         if connection:
-            print("Database connection established")
+            print("Database active")
             break
- 
+            
+    while True:
+        # menu
+        print("1. Create new Entry")
+        print("2. Retrieve Data")
+        print("3. Exit")
+        choice = input("Choose: ")
+
+        if choice == "1":
+            insert_Data(connection)
+        elif choice == "2":
+            retrieve_Data(connection)
+        elif choice == "3":
+            break
+        else:
+            print("Invalid choice")
+            continue
+
     encrypt_Database(connection, hash)
-    # close connection
     
 
-def menu():
-    # menu for choosing what to do, no clue how to do that oop
+
+def insert_Data(connection) -> None:
+    while True:
+    # menu
+        print("1. Login Credentials")
+        print("2. Secure Note")
+        print("3. Back")
+        choice = input("Choose: ")
+
+        if choice == "1":
+            login_title = input("Title: ") 
+            login_Username = input("Username: ")
+            login_Password = getpass("Password: ")
+            login_Website = input("Website: ")
+            login_Email = input("Email: ")
+            if login_title == "" or login_Password == "":
+                print("Title and Password required")
+                continue
+            break       
+        elif choice == "2":
+            print("Secure Note")  # insert secure note
+            Note_title = input("Title: ")
+            Note_text = input("Note: ")
+            if Note_title == "" or Note_text == "":
+                print("Title and Note required")
+                continue
+            break   
+        elif choice == "3":     
+            break       
+        else:
+            print("Invalid choice")
+            
+    db = connection.cursor()
+    if login_title:
+        db.execute("INSERT INTO login (title, username, password, website, email) VALUES (?, ?, ?, ?, ?)", 
+            (login_title, login_Username, login_Password, login_Website, login_Email))
+        
+    elif Note_title:
+        db.execute("INSERT INTO notes (title, note) VALUES (?, ?)", (Note_title, Note_text))
+    connection.commit()
+
+
+def retrieve_Data() -> None:
     ...
-
-
-def insert_Data() -> None:
-    ...
-
 
 def create_salt() -> bytes:
     """ salt for password hashing saved in salt.bin"""
@@ -91,22 +145,18 @@ def encrypt_Database(connection, key) -> None:
     print("Database encrypted")
 
     connection.commit()
-    print("Database saved")
+    # print("Database saved")
     if connection:
             connection.close()
             print("Database connection closed")
     os.remove("Database.db")
-    print("Database deleted")
+    # print("Database deleted")
 
-def retrieve_Data() -> None:
-    ...
 
-def verify_Masterpassword() -> bool:
-    ...
 
 def read_In_Database(key) -> None | sqlite3.Connection:
     """decrypt Database and return connection"""
-    ## Assunming that Masterpassword is already verfied? maybe saving the Hash somewhere? TODO
+
     try:
         with open("Database.enc", "rb") as f:
             encrypted_database = f.read()
@@ -120,13 +170,13 @@ def read_In_Database(key) -> None | sqlite3.Connection:
 
     with open("Database.db", "wb") as f:
         f.write(decrypted_database)
-    print("Database decrypted")
+    # print("Database decrypted")
 
     connection = sqlite3.connect(database="Database.db")
     cursor = connection.cursor()
 
     connection.commit()
-    print("Database loaded")
+    # print("Database loaded")
 
     return connection
 
@@ -147,7 +197,7 @@ def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
 
     cursor.executescript(schema)
     connection.commit()
-    print("Database created")
+    # print("Database created")
 
     return connection
 
