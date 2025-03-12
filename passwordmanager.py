@@ -30,12 +30,16 @@ import sqlite3
 def main() -> None:
     # set salt for password hashing 
     while True:  
+        database = input("Database name: ")
+        if database == "":
+            database = "Database"
+            continue
         password = getpass("Masterpassword: ").strip() 
         salt = create_salt("salt.bin")
         hash = create_key_hash(password, salt)
-        connection = database_connection(hash)
+        connection = database_connection(database, hash)
         if connection:
-            print("Database active")
+            # print("Database active")
             break
             
     while True:
@@ -287,12 +291,11 @@ def encrypt_Database(connection, key) -> None:
     # print("Database deleted")
 
 
-
-def read_In_Database(key) -> None | sqlite3.Connection:
+def read_In_Database(db, key) -> None | sqlite3.Connection:
     """decrypt Database and return connection"""
 
     try:
-        with open("Database.enc", "rb") as f:
+        with open((db +".enc"), "rb") as f:
             encrypted_database = f.read()
         cipher = Fernet(key)
 
@@ -302,11 +305,11 @@ def read_In_Database(key) -> None | sqlite3.Connection:
         print("Masterpassword incorrect")
         return
 
-    with open("Database.db", "wb") as f:
+    with open((db + ".db"), "wb") as f:
         f.write(decrypted_database)
     # print("Database decrypted")
 
-    connection = sqlite3.connect(database="Database.db")
+    connection = sqlite3.connect(database=(db+ ".db"))
     cursor = connection.cursor()
 
     connection.commit()
@@ -315,10 +318,10 @@ def read_In_Database(key) -> None | sqlite3.Connection:
     return connection
 
 
-def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
+def create_Database(db, schema="./schema/schema.sql") -> None | sqlite3.Connection:
     """Create Database and return connection according to schema"""
 
-    connection = sqlite3.connect(database="Database.db")
+    connection = sqlite3.connect(database=(db +".db"))
     cursor = connection.cursor()
     schema_path = Path(schema)
     if not schema_path.is_file():
@@ -330,19 +333,23 @@ def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
 
     cursor.executescript(schema)
     connection.commit()
-    print("Database created")
+    print("\n", "New Database created", "\n")
 
     return connection
 
 
-def database_connection(hash) -> sqlite3.Connection:
+def database_connection(db, hash) -> sqlite3.Connection:
     """Create Database connection"""
     # opening/ creating Database
+    if db.endswith(".db"):
+        db = db[:-3]
+    elif db.endswith(".enc"):
+        db = db[:-4]
     connection = None
-    if Path("./Database.enc").is_file():
-        connection = read_In_Database(hash)
+    if Path(db + ".enc").is_file():
+        connection = read_In_Database(db, hash)
     else:
-        connection = create_Database()
+        connection = create_Database(db)
 
     # abort when no Database is found or created
     if connection == None:
