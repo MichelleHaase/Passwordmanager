@@ -50,6 +50,7 @@ def main() -> None:
         print("2. Retrieve Data")
         print("3. Exit")
         choice = input("Choose: ")
+        print()
 
         if choice == "1":
             insert_Data(connection)
@@ -66,14 +67,18 @@ def main() -> None:
 
 
 def insert_Data(connection) -> None:
+    login_title = None
+    Note_title = None
     while True:
     # menu
         print("1. Login Credentials")
         print("2. Secure Note")
         print("3. Back")
         choice = input("Choose: ")
+        print()
 
         if choice == "1":
+            print("Login Credentials Title and Password required")
             login_title = input("Title: ") 
             login_Username = input("Username: ")
             login_Password = getpass("Password: ")
@@ -84,7 +89,7 @@ def insert_Data(connection) -> None:
                 continue
             break       
         elif choice == "2":
-            print("Secure Note")  # insert secure note
+            print("Secure Note")  
             Note_title = input("Title: ")
             Note_text = input("Note: ")
             if Note_title == "" or Note_text == "":
@@ -100,21 +105,36 @@ def insert_Data(connection) -> None:
     if login_title:
         db.execute("INSERT OR IGNORE INTO Passwords (passwords) VALUES (?)", (login_Password,))
         password_id = db.execute("SELECT id FROM Passwords WHERE passwords = ?", (login_Password,)).fetchone()[0]
-        db.execute("INSERT OR IGNORE INTO Username (username) VALUES (?)", (login_Username,))
-        username_id = db.execute("SELECT id FROM Username WHERE username = ?", (login_Username,)).fetchone()[0]       
-        db.execute("INSERT OR IGNORE INTO Mails (mail) VALUES (?)", (login_Email,))
-        mail_id = db.execute("SELECT id FROM Mails WHERE mail = ?", (login_Email,)).fetchone()[0]
+        # since many websites do not require a username only mail
+        if login_Username == "":
+            username_id = None
+        else:
+            db.execute("INSERT OR IGNORE INTO Username (username) VALUES (?)", (login_Username,))
+            username_id = db.execute("SELECT id FROM Username WHERE username = ?", (login_Username,)).fetchone()[0]       
+        # in case a password for a local program or secure excel is saved that has neither mail nor username
+        if login_Email == "":
+            mail_id = None
+        else:
+            db.execute("INSERT OR IGNORE INTO Mails (mail) VALUES (?)", (login_Email,))
+            mail_id = db.execute("SELECT id FROM Mails WHERE mail = ?", (login_Email,)).fetchone()[0]
         db.execute("INSERT INTO Logins (title, username_id, password_id, website, mail_id) VALUES (?, ?, ?, ?, ?)", 
             (login_title, username_id, password_id, login_Website, mail_id))
         
     elif Note_title:
-        db.execute("INSERT INTO notes (title, note) VALUES (?, ?)", (Note_title, Note_text))
+        #SQLite does not support strings longer than 1GB, unlikely but to be safe
+        try:
+            db.execute("INSERT INTO notes (title, note) VALUES (?, ?)", (Note_title, Note_text))
+        except sqlite3.DataError:
+            print("Note too long to store")
+            insert_Data(connection)
+
     connection.commit()
 
     while True:
         print("1. Add more Entries")
         print("2. Back")
         choice = input("Choose: ")
+        print()
 
         if choice == "1":
             insert_Data(connection)
@@ -125,8 +145,86 @@ def insert_Data(connection) -> None:
             continue
 
 
-def retrieve_Data() -> None:
-    ...
+def retrieve_Data(connection) -> None:
+    title = None
+    website = None
+    connection.row_factory = sqlite3.Row
+    db = connection.cursor()
+    while True:
+        # menu
+        print("1. Login Credentials")
+        print("2. Secure Note") 
+        print("3. Back")
+        choice = input("Choose: ")
+        print()
+        if choice == "1":
+            while True:
+                print("1. Search by Title")
+                print("2. Search by Website")
+                print("3. list Titles")
+                print("4. Back")
+                choice_search = input("Choose: ")
+                print()
+                if choice_search == "1":
+                    title = input("Title: ")
+                    print()
+                    break
+                elif choice_search == "2":
+                    website = input("Website: ")
+                    break
+                elif choice_search == "3":
+                    rows = db.execute("SELECT title FROM Logins").fetchall()
+                    result = [dict(row) for row in rows]
+                    [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
+                    input("Press Enter to continue...")
+                    continue
+                elif choice_search == "4":
+                    retrieve_Data(connection)
+                else:
+                    print("Invalid choice")
+                    continue
+            if title:
+                rows = db.execute("SELECT title, username, passwords, website, mail FROM Logins JOIN Username ON Logins.username_id = Username.id JOIN Passwords ON Logins.password_id = Passwords.id JOIN Mails ON Logins.mail_id = Mails.id WHERE title = ?", (title,))
+            elif website:
+                rows = db.execute("SELECT title, username, passwords, website, mail FROM Logins JOIN Username ON Logins.username_id = Username.id JOIN Passwords ON Logins.password_id = Passwords.id JOIN Mails ON Logins.mail_id = Mails.id WHERE website = ?", (website,))
+            result = [dict(row) for row in rows]
+            [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
+            input("Press Enter to continue...")
+            break
+        if choice == "2":
+            while True:
+                print("1. Search by Title")
+                print("2. list Titles")
+                print("3. Back")
+                choice_search = input("Choose: ")
+                print()
+                if choice_search == "1":
+                    title = input("Title: ")
+                    print()
+                    break
+                elif choice_search == "2":
+                    rows = db.execute("SELECT title FROM notes").fetchall()
+                    result = [dict(row) for row in rows]
+                    [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
+                    input("Press Enter to continue...")
+                    continue
+                elif choice_search == "3":
+                    break
+                else:
+                    print("Invalid choice")
+                    continue
+            if title:
+                rows = db.execute("SELECT title, note FROM notes").fetchall()
+                result = [dict(row) for row in rows]
+                [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
+                input("Press Enter to continue...")
+                break
+            else:
+                print("Title required")
+                continue
+        if choice == "3":
+            return False
+    return
 
 def create_salt() -> bytes:
     """ salt for password hashing saved in salt.bin"""
