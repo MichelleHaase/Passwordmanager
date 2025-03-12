@@ -15,10 +15,6 @@ plan:
 2. create
 
 '''
-import sys
-from tkinter import E, N
-
-from argon2 import PasswordHasher
 import base64
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
@@ -29,15 +25,13 @@ import os
 from pathlib import Path
 import sqlite3
 
-import graphics
-
 
 
 def main() -> None:
     # set salt for password hashing 
     while True:  
         password = getpass("Masterpassword: ").strip() 
-        salt = create_salt()
+        salt = create_salt("salt.bin")
         hash = create_key_hash(password, salt)
         connection = database_connection(hash)
         if connection:
@@ -53,9 +47,9 @@ def main() -> None:
         print()
 
         if choice == "1":
-            insert_Data(connection)
+            insert_Data(connection, password)
         elif choice == "2":
-            retrieve_Data(connection)
+            retrieve_Data(connection, password)
         elif choice == "3":
             break
         else:
@@ -64,9 +58,24 @@ def main() -> None:
 
     encrypt_Database(connection, hash)
     
+def encrypting_inputs(input, password) -> str:
+    """Encrypting input with Fernet"""
+    salt = create_salt("salted.bin")
+    hash = create_key_hash(password, salt)
+    cipher = Fernet(hash)
+    data = cipher.encrypt(input.encode("utf-8"))
+    return data
+
+def decrypting_inputs(input, password) -> str:
+    """Decrypting input with Fernet"""
+    salt = create_salt("salted.bin")
+    hash = create_key_hash(password, salt)
+    cipher = Fernet(hash)
+    data = cipher.decrypt(input)
+    return data.decode("utf-8")
 
 
-def insert_Data(connection) -> None:
+def insert_Data(connection, password) -> None:
     login_title = None
     Note_title = None
     while True:
@@ -103,18 +112,21 @@ def insert_Data(connection) -> None:
             
     db = connection.cursor()
     if login_title:
+        login_Password = encrypting_inputs(login_Password, password)
         db.execute("INSERT OR IGNORE INTO Passwords (passwords) VALUES (?)", (login_Password,))
         password_id = db.execute("SELECT id FROM Passwords WHERE passwords = ?", (login_Password,)).fetchone()[0]
         # since many websites do not require a username only mail
         if login_Username == "":
             username_id = None
         else:
+            login_Username = encrypting_inputs(login_Username, password)
             db.execute("INSERT OR IGNORE INTO Username (username) VALUES (?)", (login_Username,))
             username_id = db.execute("SELECT id FROM Username WHERE username = ?", (login_Username,)).fetchone()[0]       
         # in case a password for a local program or secure excel is saved that has neither mail nor username
         if login_Email == "":
             mail_id = None
         else:
+            login_Email = encrypting_inputs(login_Email, password)
             db.execute("INSERT OR IGNORE INTO Mails (mail) VALUES (?)", (login_Email,))
             mail_id = db.execute("SELECT id FROM Mails WHERE mail = ?", (login_Email,)).fetchone()[0]
         db.execute("INSERT INTO Logins (title, username_id, password_id, website, mail_id) VALUES (?, ?, ?, ?, ?)", 
@@ -123,6 +135,7 @@ def insert_Data(connection) -> None:
     elif Note_title:
         #SQLite does not support strings longer than 1GB, unlikely but to be safe
         try:
+            Note_text = encrypting_inputs(Note_text, password)
             db.execute("INSERT INTO notes (title, note) VALUES (?, ?)", (Note_title, Note_text))
         except sqlite3.DataError:
             print("Note too long to store")
@@ -145,7 +158,7 @@ def insert_Data(connection) -> None:
             continue
 
 
-def retrieve_Data(connection) -> None:
+def retrieve_Data(connection, password) -> None:
     title = None
     website = None
     connection.row_factory = sqlite3.Row
@@ -188,6 +201,10 @@ def retrieve_Data(connection) -> None:
             elif website:
                 rows = db.execute("SELECT title, username, passwords, website, mail FROM Logins JOIN Username ON Logins.username_id = Username.id JOIN Passwords ON Logins.password_id = Passwords.id JOIN Mails ON Logins.mail_id = Mails.id WHERE website = ?", (website,))
             result = [dict(row) for row in rows]
+            for row in result:
+                row["passwords"] = decrypting_inputs(row["passwords"], password)
+                row["username"] = decrypting_inputs(row["username"], password)
+                row["mail"] = decrypting_inputs(row["mail"], password)
             [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
             input("Press Enter to continue...")
             break
@@ -226,16 +243,16 @@ def retrieve_Data(connection) -> None:
             return False
     return
 
-def create_salt() -> bytes:
+def create_salt(saltname) -> bytes:
     """ salt for password hashing saved in salt.bin"""
 
-    if Path("salt.bin").is_file():
-        with open("salt.bin", "rb") as salt_file:
+    if Path(saltname).is_file():
+        with open(saltname, "rb") as salt_file:
             salt = salt_file.read()
             return salt
     
     salt = os.urandom(16)
-    with open("salt.bin", "wb") as f:
+    with open(saltname, "wb") as f:
             f.write(salt)
     return salt
 
@@ -296,7 +313,6 @@ def read_In_Database(key) -> None | sqlite3.Connection:
     # print("Database loaded")
 
     return connection
-
 
 
 def create_Database(schema="./schema/schema.sql") -> None | sqlite3.Connection:
