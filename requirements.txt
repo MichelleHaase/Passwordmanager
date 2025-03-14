@@ -1,2 +1,1 @@
-cryptography.fernet
-cryptography.hazmat
+cryptography
