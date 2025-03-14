@@ -9,9 +9,13 @@ Core features:
 5. maybe other option on saving websites, notes etc
 
 '''
-#TODO no rows between multiple prints
-# TODO notesd dont save?
 
+# TODO while überarbeiten if several inputs -> logic and menu in while loop if not only menu in loop and logic outside
+# maye be if input is empty the function is called again TODO
+# streamline capitalisations in prints TODO
+# few_titles TODO
+# pretty_print TODO
+  
 
 import base64
 import os
@@ -52,7 +56,9 @@ def main() -> None:
         print("Password Manager")
         print("1. Create new Entry")
         print("2. Retrieve Data")
-        print("3. Exit")
+        print("3. Delete Entry")
+        print("4. Change Masterpassword")
+        print("5. Exit")
         choice = input("Choose: ")
         print()
 
@@ -61,6 +67,19 @@ def main() -> None:
         elif choice == "2":
             retrieve_Data(connection, password)
         elif choice == "3":
+            delete_entry(connection)
+        elif choice == "4":
+            new_pass = change_master(connection, password)
+            if new_pass:
+                password = new_pass
+                salt = create_salt("salt.bin")
+                hash = create_key_hash(password, salt)
+                print("Masterpassword active once the application is restarted")
+                continue
+            else:
+                print("Masterpassword not changed")
+                continue
+        elif choice == "5":
             break
         else:
             print("Invalid choice")
@@ -68,6 +87,138 @@ def main() -> None:
 
     # encrypt database and close connection
     encrypt_Database(connection, hash)
+
+def delete_entry(connection) -> None:
+    """Delete entry from Database"""
+    # Delete Menu
+    while True:
+        print("Delete Entry")
+        print("1. Delete Login Credentials")
+        print("2. Delete Secure Note")
+        print("3. Back")
+        choice = input("Choose: ")
+        print()
+
+        if choice == "1":  # delete login credentials
+            delete_login(connection)
+            return
+        elif choice == "2":  # delete secure note
+            delete_note(connection)
+            return
+        elif choice == "3":
+            return
+    
+def delete_login(connection) -> None:
+    """Delete Login Credentials"""
+    # Delete Login Menu
+    while True:
+        print("Delete Login Credentials")
+        print("1. Delete by Title")
+        print("2. List Titles")
+        print("3. Back")
+        choice = input("Choose: ")  
+        print()
+        if choice == "1":  # delete by title
+            title = input("Title: ")
+            print()
+            if title == "":
+                print("Title required")
+                delete_login()
+            else:
+                db = connection.cursor()
+                db.execute(
+                    """DELETE FROM Logins 
+                    WHERE title = ?""",
+                    (title,),
+                )
+                connection.commit()
+                print("If They Existed the Login Credentials are Deleted")
+                print()
+                return
+        elif choice == "2": # list all titles
+            rows = db.execute(
+                """SELECT title 
+                FROM Logins"""
+            ).fetchall()
+            # transforming the output into a list of dicts for easier printing
+            result = [dict(row) for row in rows]
+            # prints one key/value pair per line with an \n between list items
+            # no decryption since titoles are saved in clear text
+            [
+                (print(*[f"{k}: {v}" for k, v in row.items()], sep="\n"))
+                for row in result
+            ]
+            input("Press Enter to continue...")
+            print()
+            continue
+        elif choice == "3": # back
+            return
+        else:
+            print("Invalid choice")
+
+def delete_note(connection) -> None:
+    """Delete Secure Note"""
+    # Delete Note Menu
+    while True:
+        print("Delete Secure Note")
+        print("1. Delete by Title")
+        print("2. List Titles")
+        print("3. Back")
+        choice = input("Choose: ")
+        print()
+        if choice == "1":  # delete by title
+            title = input("Title: ")
+            print()
+            if title == "":
+                print("Title required")
+                delete_note()
+            else:
+                db = connection.cursor()
+                db.execute(
+                    """DELETE FROM Notes 
+                    WHERE title = ?""",
+                    (title,),
+                )
+                connection.commit()
+                print("If They Existed the Secure Note is Deleted")
+                print()
+                return
+        
+        elif choice == "2": # list all titles
+            rows = db.execute(
+                """SELECT title 
+                FROM Notes"""
+            ).fetchall()
+            # transforming the output into a list of dicts for easier printing
+            result = [dict(row) for row in rows]
+            # prints one key/value pair per line with an \n between list items
+            [
+                (print(*[f"{k}: {v}" for k, v in row.items()], sep="\n"))
+                for row in result
+            ]
+            input("Press Enter to continue...")
+            print()
+            continue
+        elif choice == "3": # back
+            return
+        else:
+            print("Invalid choice")
+
+
+def change_master(password) -> bool|str:
+    """Change Masterpassword"""
+    # changing the masterpassword
+    print("Pease reenter your current Masterpassword")
+    current_password = getpass("Current Masterpassword: ").strip()
+    print()
+    # checking if the current password is correct
+    if current_password != password:
+        print("Masterpassword incorrect")
+        return False
+    # if the current password is correct the new password is set
+    new_password = getpass("New Masterpassword: ").strip()
+    print()
+    return new_password
 
 
 def encrypting_inputs(input, password) -> str:
