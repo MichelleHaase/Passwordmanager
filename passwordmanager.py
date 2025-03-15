@@ -13,8 +13,12 @@ Core features:
 # TODO while überarbeiten if several inputs -> logic and menu in while loop if not only menu in loop and logic outside
 # maye be if input is empty the function is called again TODO
 # streamline capitalisations in prints TODO
-# few_titles TODO
-# pretty_print TODO
+# view_titles TODO
+# pretty_print TODO 
+# what happens if title already exits TODO
+# stacks loops for menu notes !!!! TODO
+# retrieving logins loops on the backs 4 to 3 TODO
+# success message after deleting in both functions TODO
   
 
 import base64
@@ -69,7 +73,7 @@ def main() -> None:
         elif choice == "3":
             delete_entry(connection)
         elif choice == "4":
-            new_pass = change_master(connection, password)
+            new_pass = change_master(password)
             if new_pass:
                 password = new_pass
                 salt = create_salt("salt.bin")
@@ -108,9 +112,12 @@ def delete_entry(connection) -> None:
         elif choice == "3":
             return
     
+
 def delete_login(connection) -> None:
     """Delete Login Credentials"""
     # Delete Login Menu
+    connection.row_factory = sqlite3.Row
+    db = connection.cursor()
     while True:
         print("Delete Login Credentials")
         print("1. Delete by Title")
@@ -125,7 +132,7 @@ def delete_login(connection) -> None:
                 print("Title required")
                 delete_login()
             else:
-                db = connection.cursor()
+                
                 db.execute(
                     """DELETE FROM Logins 
                     WHERE title = ?""",
@@ -156,9 +163,12 @@ def delete_login(connection) -> None:
         else:
             print("Invalid choice")
 
+
 def delete_note(connection) -> None:
     """Delete Secure Note"""
     # Delete Note Menu
+    connection.row_factory = sqlite3.Row
+    db = connection.cursor()
     while True:
         print("Delete Secure Note")
         print("1. Delete by Title")
@@ -173,7 +183,7 @@ def delete_note(connection) -> None:
                 print("Title required")
                 delete_note()
             else:
-                db = connection.cursor()
+                
                 db.execute(
                     """DELETE FROM Notes 
                     WHERE title = ?""",
@@ -212,6 +222,9 @@ def change_master(password) -> bool|str:
     current_password = getpass("Current Masterpassword: ").strip()
     print()
     # checking if the current password is correct
+    # salt = create_salt("salt.bin")
+    # hash = create_key_hash(current_password, salt)
+
     if current_password != password:
         print("Masterpassword incorrect")
         return False
