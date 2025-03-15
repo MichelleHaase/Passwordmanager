@@ -9,17 +9,7 @@ Core features:
 5. maybe other option on saving websites, notes etc
 '''
 
-# TODO while überarbeiten if several inputs -> logic and menu in while loop if not only menu in loop and logic outside
-# maye be if input is empty the function is called again TODO
-# streamline capitalisations in prints TODO
-# view_titles TODO
-# pretty_print TODO 
-# what happens if title already exits TODO
-# stacks loops for menu notes !!!! TODO
-# retrieving logins loops on the backs 4 to 3 TODO
-# success message after deleting in both functions TODO
   
-
 import base64
 import os
 from getpass import getpass
@@ -35,7 +25,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 def main() -> None:
     """Main function"""
     while True:
-        database = input("Database name: ")
+        database = input("Database Name: ")
         # if no name is given the default name is Database
         if database == "":
             database = "Database"
@@ -51,13 +41,12 @@ def main() -> None:
         connection = database_connection(database, hash)
         # if the Database link is established the program continues
         if connection:
-            # print("Database active")
             break
 
-    while True:
+    while True: # since the menu should be displayed after each action, logic in loop
         # menu
         print("Password Manager")
-        print("1. Create new Entry")
+        print("1. Create New Entry")
         print("2. Retrieve Data")
         print("3. Delete Entry")
         print("4. Change Masterpassword")
@@ -77,15 +66,15 @@ def main() -> None:
                 password = new_pass
                 salt = create_salt("salt.bin")
                 hash = create_key_hash(password, salt)
-                print("Masterpassword active once the application is restarted")
+                print("Masterpassword Active Once the Application is Restarted")
                 continue
             else:
-                print("Masterpassword not changed")
+                print("Masterpassword Not Changed")
                 continue
         elif choice == "5":
             break
         else:
-            print("Invalid choice")
+            print("Invalid Choice")
             continue
 
     # encrypt database and close connection
@@ -124,43 +113,39 @@ def delete_login(connection) -> None:
         print("3. Back")
         choice = input("Choose: ")  
         print()
-        if choice == "1":  # delete by title
-            title = input("Title: ")
-            print()
-            if title == "":
-                print("Title required")
-                delete_login()
-            else:
-                
-                db.execute(
-                    """DELETE FROM Logins 
-                    WHERE title = ?""",
-                    (title,),
-                )
-                connection.commit()
-                print("If They Existed the Login Credentials are Deleted")
-                print()
-                return
-        elif choice == "2": # list all titles
-            rows = db.execute(
-                """SELECT title 
-                FROM Logins"""
-            ).fetchall()
-            # transforming the output into a list of dicts for easier printing
-            result = [dict(row) for row in rows]
-            # prints one key/value pair per line with an \n between list items
-            # no decryption since titoles are saved in clear text
-            [
-                (print(*[f"{k}: {v}" for k, v in row.items()], sep="\n"))
-                for row in result
-            ]
-            input("Press Enter to continue...")
-            print()
-            continue
-        elif choice == "3": # back
-            return
+        if choice in ["1", "2", "3"]:   
+            break
         else:
-            print("Invalid choice")
+            print("Invalid Choice")
+            continue
+
+    if choice == "1":  # delete by title
+        title = input("Title: ")
+        print()
+        if title == "":
+            print("Title Required")
+            delete_login()
+        else:
+            db.execute(
+                """DELETE FROM Logins 
+                WHERE title = ?""",
+                (title,),
+            )
+            connection.commit()
+            print("If They Existed the Login Credentials are Deleted")
+            print()
+            return
+    elif choice == "2": # list all titles
+        rows = db.execute(
+            """SELECT title 
+            FROM Logins"""
+        ).fetchall()
+        pretty_print(rows)
+        return
+    elif choice == "3": # back
+        return
+    else:
+        print("Invalid Choice")
 
 
 def delete_note(connection) -> None:
@@ -179,7 +164,7 @@ def delete_note(connection) -> None:
             title = input("Title: ")
             print()
             if title == "":
-                print("Title required")
+                print("Title Required")
                 delete_note()
             else:
                 
@@ -198,26 +183,16 @@ def delete_note(connection) -> None:
                 """SELECT title 
                 FROM Notes"""
             ).fetchall()
-            # transforming the output into a list of dicts for easier printing
-            result = [dict(row) for row in rows]
-            # prints one key/value pair per line with an \n between list items
-            [
-                (print(*[f"{k}: {v}" for k, v in row.items()], sep="\n"))
-                for row in result
-            ]
-            input("Press Enter to continue...")
-            print()
+            pretty_print(rows)
             continue
         elif choice == "3": # back
             return
-        else:
-            print("Invalid choice")
-
+        
 
 def change_master(password) -> bool|str:
     """Change Masterpassword"""
     # changing the masterpassword
-    print("Pease reenter your current Masterpassword")
+    print("Please Re-enter your Current Masterpassword")
     current_password = getpass("Current Masterpassword: ").strip()
     print()
     # checking if the current password is correct
@@ -225,7 +200,7 @@ def change_master(password) -> bool|str:
     # hash = create_key_hash(current_password, salt)
 
     if current_password != password:
-        print("Masterpassword incorrect")
+        print("Masterpassword Incorrect")
         return False
     # if the current password is correct the new password is set
     new_password = getpass("New Masterpassword: ").strip()
@@ -268,53 +243,69 @@ def insert_Data(connection, password) -> None:
         print("3. Back")
         choice = input("Choose: ")
         print()
-
-        if choice == "1":  # login credentials
-            # password and title are required so passwords can be stored singularly
-            print("Login Credentials Title and Password required")
-
-            login_title = input("Title: ")
-            login_Username = input("Username: ")
-            login_Password = getpass("Password: ")
-            login_Website = input("Website: ")
-            login_Email = input("Email: ")
-            print()
-
-            # re-prompt if title or password are not entered
-            if login_title == "" or login_Password == "":
-                print("Title and Password required")
-                continue
-            else:
-                insert_login(
-                    connection,
-                    login_title,
-                    login_Username,
-                    login_Password,
-                    login_Website,
-                    login_Email,
-                    password,
-                )
-                break
-
-        elif choice == "2":  # secure note
-            print("Secure Note")
-            Note_title = input("Title: ")
-            Note_text = input("Note: ")
-            print()
-
-            # re-prompt if title or note are not entered
-            if Note_title == "" or Note_text == "":
-                print("Title and Note required")
-                continue
-            else:
-                insert_note(connection, Note_title, Note_text, password)
-                break
-
-        elif choice == "3":
-            return
-
+        if choice in ["1", "2", "3"]:
+            break
         else:
-            print("Invalid choice")
+            print("Invalid Choice")
+
+    if choice == "1":  # login credentials
+        # password and title are required so passwords can be stored singularly
+        print("Login Credentials Title and Password Required")
+
+        login_title = input("Title: ")
+        login_Username = input("Username: ")
+        login_Password = getpass("Password: ")
+        login_Website = input("Website: ")
+        login_Email = input("Email: ")
+        print()
+
+        # re-prompt if title or password are not entered
+        if login_title == "" or login_Password == "":
+            print("Title and Password Required")
+            insert_Data(connection, password)
+        else:
+            insert_login(
+                connection,
+                login_title,
+                login_Username,
+                login_Password,
+                login_Website,
+                login_Email,
+                password,
+            )
+            
+
+    elif choice == "2":  # secure note
+        print("Secure Note")
+        Note_title = input("Title: ")
+        Note_text = input("Note: ")
+        print()
+
+        # re-prompt if title or note are not entered
+        if Note_title == "" or Note_text == "":
+            print("Title and Note Required")
+            insert_Data(connection, password)
+        else:
+            insert_note(connection, Note_title, Note_text, password)
+
+    elif choice == "3":
+        return
+    
+    while True:
+        print("Insert Data")
+        print("1. Add More Entries")
+        print("2. Back")
+        choice = input("Choose: ")
+        print()
+
+        if choice == "1":
+            insert_Data(connection, password)
+        elif choice == "2":
+            break
+        else:
+            print("Invalid Choice")
+            continue
+    return
 
 
 def insert_login(
@@ -387,24 +378,10 @@ def insert_login(
     )
 
     connection.commit()
-    print("Login Credentials saved")
+    print("Login Credentials Saved")
     print()
 
-    # menu to add more entries or go back
-    while True:
-        print("Insert Data")
-        print("1. Add more Entries")
-        print("2. Back")
-        choice = input("Choose: ")
-        print()
-
-        if choice == "1":
-            insert_Data(connection, password)
-        elif choice == "2":
-            break
-        else:
-            print("Invalid choice")
-            continue
+    return
 
 
 def insert_note(connection, Note_title, Note_text, password) -> None:
@@ -420,28 +397,36 @@ def insert_note(connection, Note_title, Note_text, password) -> None:
         )
 
     except sqlite3.DataError:
-        print("Note too long to store")
+        print("Note too Long to Store")
         insert_Data(connection, password)
 
     connection.commit()
-    print("Secure Note saved")
+    print("Secure Note Saved")
     print()
 
-    # menu to add more entries or go back
+    return
+
+
+def retrieve_Data(connection, password) -> None:
+
+    # allows to address sql output by column name
+    connection.row_factory = sqlite3.Row
+    db = connection.cursor()
+
     while True:
-        print("Insert Data")
-        print("1. Add more Entries")
-        print("2. Back")
+        # menu
+        print("Retrieve Data")
+        print("1. Login Credentials")
+        print("2. Secure Note")
+        print("3. Back")
         choice = input("Choose: ")
         print()
-
-        if choice == "1":
-            insert_Data(connection, password)
-        elif choice == "2":
-            return
-        else:
-            print("Invalid choice")
-            continue
+        if choice == "1":  # login credentials
+            retrieve_login(connection, password)
+        if choice == "2":  # secure note
+            retrieve_note(connection, password)
+        if choice == "3":
+            break
 
 
 def retrieve_login(connection, password) -> None:
@@ -454,49 +439,42 @@ def retrieve_login(connection, password) -> None:
         print("Search Login Credentials")
         print("1. Search by Title")
         print("2. Search by Website")
-        print("3. list Titles")
+        print("3. List Titles")
         print("4. Back")
         choice_search = input("Choose: ")
         print()
-
-        if choice_search == "1":  # search by title
-            title = input("Title: ")
-            print()
-            if title == "":
-                print("Title required")
-                continue
+        if choice_search in ["1","2","3","4"]:
             break
-        elif choice_search == "2":  # search by website
-            website = input("Website: ")
-            print()
-            if website == "":
-                print("Website required")
-                continue
-            break
-        elif choice_search == "3":  # list all titles
-
-            rows = db.execute(
-                """SELECT title 
-                FROM Logins"""
-            ).fetchall()
-            # transforming the output into a list of dicts for easier printing
-            result = [dict(row) for row in rows]
-            # prints one key/value pair per line with an \n between list items
-            # no decryption since titoles are saved in clear text
-            [
-                (print(*[f"{k}: {v}" for k, v in row.items()], sep="\n"))
-                for row in result
-            ]
-
-            input("Press Enter to continue...")
-            print()
-            continue
-
-        elif choice_search == "4":  # back
-            retrieve_Data(connection, password)
         else:
-            print("Invalid choice")
+            print("Invalid Choice")
             continue
+
+    if choice_search == "1":  # search by title
+        title = input("Title: ")
+        print()
+        if title == "":
+            print("Title Required")
+            retrieve_login(connection, password)
+
+    elif choice_search == "2":  # search by website
+        website = input("Website: ")
+        print()
+        if website == "":
+            print("Website Required")
+            retrieve_login(connection, password)
+
+    elif choice_search == "3":  # list all titles
+        rows = db.execute(
+            """SELECT title 
+            FROM Logins"""
+        ).fetchall()
+        pretty_print(rows)
+
+        retrieve_login(connection, password)
+
+    elif choice_search == "4":  # back
+        return
+
     # if title or website is no longer None the according search is executed
     if title:
         rows = db.execute(
@@ -537,51 +515,47 @@ def retrieve_login(connection, password) -> None:
     
     [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
     # wait till user is ready to continue
-    input("Press Enter to continue...")
+    input("Press Enter to Continue...")
     print()
     return
 
 
 def retrieve_note(connection, password) -> None:
+    title = None
     connection.row_factory = sqlite3.Row
     db = connection.cursor()
     # search menu
     while True:
         print("Search Secure Notes")
         print("1. Search by Title")
-        print("2. list Titles")
+        print("2. List Titles")
         print("3. Back")
 
         choice_search = input("Choose: ")
         print()
 
-        if choice_search == "1":  # search by title
-            title = input("Title: ")
-            print()
+        if choice_search in ["1","2","3"]:
             break
-
-        elif choice_search == "2":  # list all titles
-            rows = db.execute(
-                """SELECT title 
-                FROM Notes"""
-            ).fetchall()
-
-            # transforming the output into a list of dicts for easier printing  in ouput func TODO
-            result = [dict(row) for row in rows]
-            # prints one key/value pair per line with an \n between list items
-            [
-                (print(*[f"{k}: {v}" for k, v in row.items()], sep="\n"))
-                for row in result
-            ]
-            input("Press Enter to continue...")
-            print()
-            continue
-
-        elif choice_search == "3":  # back
-            return
         else:
-            print("Invalid choice")
             continue
+        
+    if choice_search == "1":  # search by title
+        title = input("Title: ")
+        print()
+        return
+
+    elif choice_search == "2":  # list all titles
+        rows = db.execute(
+            """SELECT title 
+            FROM Notes"""
+        ).fetchall()
+
+        pretty_print(rows)
+        retrieve_note(connection, password)
+
+    elif choice_search == "3":  # back
+        return
+
 
     # if title is no longer None the according search is executed
     if title:
@@ -596,37 +570,29 @@ def retrieve_note(connection, password) -> None:
         for row in result:
             row["note"] = decrypting_inputs(row["note"], password)
         [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
-        input("Press Enter to continue...")
+        input("Press Enter to Continue...")
         print()
         return
 
     else:
-        print("Title required")
+        print("Title Required")
         retrieve_note(connection, password)
 
 
-def retrieve_Data(connection, password) -> None:
-
-    # allows to address sql output by column name
-    connection.row_factory = sqlite3.Row
-    db = connection.cursor()
-
-    while True:
-        # menu
-        print("Retrieve Data")
-        print("1. Login Credentials")
-        print("2. Secure Note")
-        print("3. Back")
-        choice = input("Choose: ")
-        print()
-        if choice == "1":  # login credentials
-            retrieve_login(connection, password)
-        if choice == "2":  # secure note
-            retrieve_note(connection, password)
-        if choice == "3":
-            break
-
-
+def pretty_print(rows) -> None:
+    """cleans up SQL outputs"""
+    # transforming the output into a list of dicts for easier printing
+    result = [dict(row) for row in rows]
+    # prints one key/value pair per line with an \n between list items
+    # no decryption since titoles are saved in clear text
+    [
+        (print(*[f"{k}: {v}" for k, v in row.items()], sep="\n"))
+        for row in result
+    ]
+    input("Press Enter to Continue...")
+    print()
+    return
+    
 def create_salt(saltname) -> bytes:
     """salt for password hashing saved in salt.bin"""
     # if there is a stored salt it is used
@@ -672,61 +638,15 @@ def encrypt_Database(connection, key) -> None:
     with open("Database.enc", "wb") as f:
         f.write(encrypted_database)
 
-    print("Database encrypted")
+    print("Database Encrypted")
 
     connection.commit()
     # close connection
     if connection:
         connection.close()
-        print("Database connection closed")
+        print("Database Connection Closed")
     # delete decrypted db
     os.remove("Database.db")
-
-
-def read_In_Database(db, key) -> None | sqlite3.Connection:
-    """decrypt Database and return connection"""
-    # read in encrypted db
-    try:
-        with open((db + ".enc"), "rb") as f:
-            encrypted_database = f.read()
-        cipher = Fernet(key)
-
-        decrypted_database = cipher.decrypt(encrypted_database)
-
-    except InvalidToken:
-        print("Masterpassword incorrect")
-        return
-    # write decrypted db
-    with open((db + ".db"), "wb") as f:
-        f.write(decrypted_database)
-
-    # connect to decrypted db
-    connection = sqlite3.connect(database=(db + ".db"))
-    connection.commit()
-
-    return connection
-
-
-def create_Database(db, schema="./schema/schema.sql") -> None | sqlite3.Connection:
-    """Create Database and return connection according to schema"""
-    # create Database according to default schema
-    connection = sqlite3.connect(database=(db + ".db"))
-    cursor = connection.cursor()
-    schema_path = Path(schema)
-    if not schema_path.is_file():
-        print(f"Schema file not found: {schema_path}")
-        return
-
-    # read in schema
-    with open(schema_path, "r") as schema_file:
-        schema = schema_file.read()
-
-    # execute schema
-    cursor.executescript(schema)
-    connection.commit()
-    print("\n", "New Database created", "\n")
-
-    return connection
 
 
 def database_connection(db, hash) -> sqlite3.Connection:
@@ -746,6 +666,52 @@ def database_connection(db, hash) -> sqlite3.Connection:
     # abort when no Database is found or created
     if connection == None:
         return None
+
+    return connection
+
+
+def read_In_Database(db, key) -> None | sqlite3.Connection:
+    """decrypt Database and return connection"""
+    # read in encrypted db
+    try:
+        with open((db + ".enc"), "rb") as f:
+            encrypted_database = f.read()
+        cipher = Fernet(key)
+
+        decrypted_database = cipher.decrypt(encrypted_database)
+
+    except InvalidToken:
+        print("Masterpassword Incorrect")
+        return
+    # write decrypted db
+    with open((db + ".db"), "wb") as f:
+        f.write(decrypted_database)
+
+    # connect to decrypted db
+    connection = sqlite3.connect(database=(db + ".db"))
+    connection.commit()
+
+    return connection
+
+
+def create_Database(db, schema="./schema/schema.sql") -> None | sqlite3.Connection:
+    """Create Database and return connection according to schema"""
+    # create Database according to default schema
+    connection = sqlite3.connect(database=(db + ".db"))
+    cursor = connection.cursor()
+    schema_path = Path(schema)
+    if not schema_path.is_file():
+        print(f"Schema File Not Found: {schema_path}")
+        return
+
+    # read in schema
+    with open(schema_path, "r") as schema_file:
+        schema = schema_file.read()
+
+    # execute schema
+    cursor.executescript(schema)
+    connection.commit()
+    print("\n", "New Database Created", "\n")
 
     return connection
 
