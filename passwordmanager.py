@@ -7,7 +7,6 @@ Core features:
 3. master password for encryption
 4. saving secure notes
 5. maybe other option on saving websites, notes etc
-
 '''
 
 # TODO while überarbeiten if several inputs -> logic and menu in while loop if not only menu in loop and logic outside
