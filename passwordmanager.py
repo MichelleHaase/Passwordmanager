@@ -6,7 +6,7 @@ Core features:
 2. retrieving clear passwords
 3. master password for encryption
 4. saving secure notes
-5. maybe other option on saving websites, notes etc
+5. maybe other option on saving websites, deleting stuff etc
 '''
 
   
@@ -327,6 +327,7 @@ def insert_login(
                 VALUES (?)""",
         (login_Password,)
     )
+    connection.commit()
     
     password_id = db.execute(
         """SELECT id FROM Passwords 
@@ -345,6 +346,7 @@ def insert_login(
             VALUES (?)""",
             (login_Username,)
         )
+        connection.commit()
 
         username_id = db.execute(
             """SELECT id FROM Username 
@@ -363,6 +365,7 @@ def insert_login(
             VALUES (?)""",
             (login_Email,)
         )
+        connection.commit()
 
         mail_id = db.execute(
             """SELECT id FROM Mails 
@@ -569,7 +572,9 @@ def retrieve_note(connection, password) -> None:
         result = [dict(row) for row in rows]
         for row in result:
             row["note"] = decrypting_inputs(row["note"], password)
+
         [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
+
         input("Press Enter to Continue...")
         print()
         return
@@ -593,6 +598,7 @@ def pretty_print(rows) -> None:
     print()
     return
     
+
 def create_salt(saltname) -> bytes:
     """salt for password hashing saved in salt.bin"""
     # if there is a stored salt it is used

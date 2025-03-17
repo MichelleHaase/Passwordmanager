@@ -3,3 +3,6 @@ salt.bin
 testingstuff.py
 *.db
 *.venv/*
+test_salt.bin
+test_passwordmanager.py
+__pycache__/*
