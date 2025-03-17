@@ -81,7 +81,7 @@ def main() -> None:
             continue
 
     # encrypt database and close connection
-    encrypt_Database(connection, hash)
+    encrypt_Database(connection, hash, database)
 
 def delete_entry(connection) -> None:
     """Delete entry from Database"""
@@ -127,7 +127,7 @@ def delete_login(connection) -> None:
         print()
         if title == "":
             print("Title Required")
-            delete_login()
+            return delete_login(connection)
         else:
             db.execute(
                 """DELETE FROM Logins 
@@ -144,7 +144,7 @@ def delete_login(connection) -> None:
             FROM Logins"""
         ).fetchall()
         pretty_print(rows)
-        return
+        return delete_login(connection)
     elif choice == "3": # back
         return
     else:
@@ -168,7 +168,7 @@ def delete_note(connection) -> None:
             print()
             if title == "":
                 print("Title Required")
-                delete_note()
+                return delete_note(connection)
             else:
                 
                 db.execute(
@@ -187,7 +187,7 @@ def delete_note(connection) -> None:
                 FROM Notes"""
             ).fetchall()
             pretty_print(rows)
-            continue
+            return delete_note(connection)
         elif choice == "3": # back
             return
         
@@ -265,7 +265,7 @@ def insert_Data(connection, password, database) -> None:
         # re-prompt if title or password are not entered
         if login_title == "" or login_Password == "":
             print("Title and Password Required")
-            insert_Data(connection, password, database)
+            return insert_Data(connection, password, database)
         else:
             insert_login(
                 connection,
@@ -288,7 +288,7 @@ def insert_Data(connection, password, database) -> None:
         # re-prompt if title or note are not entered
         if Note_title == "" or Note_text == "":
             print("Title and Note Required")
-            insert_Data(connection, password, database)
+            return insert_Data(connection, password, database)
         else:
             insert_note(connection, Note_title, Note_text, password, database)
 
@@ -430,11 +430,12 @@ def retrieve_Data(connection, password, database) -> None:
         choice = input("Choose: ")
         print()
         if choice == "1":  # login credentials
-            retrieve_login(connection, password, database)
+            return retrieve_login(connection, password, database)
         if choice == "2":  # secure note
-            retrieve_note(connection, password, database)
+            return retrieve_note(connection, password, database)
         if choice == "3":
             break
+        return
 
 
 def retrieve_login(connection, password, database) -> None:
@@ -462,14 +463,14 @@ def retrieve_login(connection, password, database) -> None:
         print()
         if title == "":
             print("Title Required")
-            retrieve_login(connection, password, database)
+            return retrieve_login(connection, password, database)
 
     elif choice_search == "2":  # search by website
         website = input("Website: ")
         print()
         if website == "":
             print("Website Required")
-            retrieve_login(connection, password, database)
+            return retrieve_login(connection, password, database)
 
     elif choice_search == "3":  # list all titles
         rows = db.execute(
@@ -478,7 +479,7 @@ def retrieve_login(connection, password, database) -> None:
         ).fetchall()
         pretty_print(rows)
 
-        retrieve_login(connection, password, database)
+        return retrieve_login(connection, password, database)
 
     elif choice_search == "4":  # back
         return
@@ -550,7 +551,7 @@ def retrieve_note(connection, password, database) -> None:
     if choice_search == "1":  # search by title
         title = input("Title: ")
         print()
-        return
+        
 
     elif choice_search == "2":  # list all titles
         rows = db.execute(
@@ -559,7 +560,7 @@ def retrieve_note(connection, password, database) -> None:
         ).fetchall()
 
         pretty_print(rows)
-        retrieve_note(connection, password, database)
+        return retrieve_note(connection, password, database)
 
     elif choice_search == "3":  # back
         return
@@ -586,7 +587,8 @@ def retrieve_note(connection, password, database) -> None:
 
     else:
         print("Title Required")
-        retrieve_note(connection, password, database)
+        return retrieve_note(connection, password, database)
+
 
 
 def pretty_print(rows) -> None:
@@ -642,10 +644,10 @@ def create_key_hash(password, salt) -> str:
     return base64.urlsafe_b64encode(kdf_key)
 
 
-def encrypt_Database(connection, key) -> None:
+def encrypt_Database(connection, key, db) -> None:
     """encrypt Database and save it as Database.enc"""
     # read in db
-    with open("Database.db", "rb") as f:
+    with open((db + ".db"), "rb") as f:
         database = f.read()
 
     # derive cipher from key
@@ -654,7 +656,7 @@ def encrypt_Database(connection, key) -> None:
     encrypted_database = cipher.encrypt(database)
 
     # write encrypted db
-    with open("Database.enc", "wb") as f:
+    with open((db + ".enc"), "wb") as f:
         f.write(encrypted_database)
 
     print("Database Encrypted")
@@ -665,7 +667,7 @@ def encrypt_Database(connection, key) -> None:
         connection.close()
         print("Database Connection Closed")
     # delete decrypted db
-    os.remove("Database.db")
+    os.remove((db + ".db"))
 
 
 def database_connection(db, hash) -> sqlite3.Connection:
@@ -677,7 +679,7 @@ def database_connection(db, hash) -> sqlite3.Connection:
         db = db[:-4]
     connection = None
     # check if encrypted Database exists
-    if Path(db + ".enc").is_file():
+    if Path(db + ".enc").is_file() | Path(db + ".db").is_file():
         connection = read_In_Database(db, hash)
     else:
         connection = create_Database(db)
@@ -692,19 +694,20 @@ def database_connection(db, hash) -> sqlite3.Connection:
 def read_In_Database(db, key) -> None | sqlite3.Connection:
     """decrypt Database and return connection"""
     # read in encrypted db
-    try:
-        with open((db + ".enc"), "rb") as f:
-            encrypted_database = f.read()
-        cipher = Fernet(key)
+    if Path(db + ".enc").is_file():
+        try:
+            with open((db + ".enc"), "rb") as f:
+                encrypted_database = f.read()
+            cipher = Fernet(key)
 
-        decrypted_database = cipher.decrypt(encrypted_database)
+            decrypted_database = cipher.decrypt(encrypted_database)
 
-    except InvalidToken:
-        print("Masterpassword Incorrect")
-        return
-    # write decrypted db
-    with open((db + ".db"), "wb") as f:
-        f.write(decrypted_database)
+        except InvalidToken:
+            print("Masterpassword Incorrect")
+            return
+        # write decrypted db
+        with open((db + ".db"), "wb") as f:
+            f.write(decrypted_database)
 
     # connect to decrypted db
     connection = sqlite3.connect(database=(db + ".db"))
@@ -719,6 +722,7 @@ def create_Database(db, schema="./schema/schema.sql") -> None | sqlite3.Connecti
     connection = sqlite3.connect(database=(db + ".db"))
     cursor = connection.cursor()
     schema_path = Path(schema)
+    
     if not schema_path.is_file():
         print(f"Schema File Not Found: {schema_path}")
         return
@@ -730,7 +734,7 @@ def create_Database(db, schema="./schema/schema.sql") -> None | sqlite3.Connecti
     # execute schema
     cursor.executescript(schema)
     connection.commit()
-    print("\n", "New Database Created", "\n")
+   
 
     return connection
 
