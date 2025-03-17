@@ -15,6 +15,9 @@ import os
 from getpass import getpass
 from pathlib import Path
 import sqlite3
+import sys
+import subprocess
+import stat
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
@@ -34,7 +37,7 @@ def main() -> None:
         print()
 
         # creating salt and hash for encryption
-        salt = create_salt("salt.bin")
+        salt = create_salt(database+".bin")
         hash = create_key_hash(password, salt)
 
         # creating Database or loading existing Database and connecting
@@ -55,16 +58,16 @@ def main() -> None:
         print()
 
         if choice == "1":
-            insert_Data(connection, password)
+            insert_Data(connection, password, database)
         elif choice == "2":
-            retrieve_Data(connection, password)
+            retrieve_Data(connection, password, database)
         elif choice == "3":
             delete_entry(connection)
         elif choice == "4":
             new_pass = change_master(password)
             if new_pass:
                 password = new_pass
-                salt = create_salt("salt.bin")
+                salt = create_salt(database+".bin")
                 hash = create_key_hash(password, salt)
                 print("Masterpassword Active Once the Application is Restarted")
                 continue
@@ -208,10 +211,10 @@ def change_master(password) -> bool|str:
     return new_password
 
 
-def encrypting_inputs(input, password) -> str:
+def encrypting_inputs(input, password, database) -> str:
     """Encrypting input with Fernet"""
     # creating a different salt than for the db encryption
-    salt = create_salt("salted.bin")
+    salt = create_salt((database + "_.bin"))
     hash = create_key_hash(password, salt)
     cipher = Fernet(hash)
     # encrypting input so sensitive data is not stored in clear text
@@ -220,9 +223,9 @@ def encrypting_inputs(input, password) -> str:
     return data
 
 
-def decrypting_inputs(input, password) -> str:
+def decrypting_inputs(input, password, database) -> str:
     """Decrypting input with Fernet"""
-    salt = create_salt("salted.bin")
+    salt = create_salt((database + "_.bin"))
     hash = create_key_hash(password, salt)
     cipher = Fernet(hash)
     data = cipher.decrypt(input)
@@ -231,7 +234,7 @@ def decrypting_inputs(input, password) -> str:
     return data.decode("utf-8")
 
 
-def insert_Data(connection, password) -> None:
+def insert_Data(connection, password, database) -> None:
     # setting up variables to identify the menu choice
     login_title = None
     Note_title = None
@@ -262,7 +265,7 @@ def insert_Data(connection, password) -> None:
         # re-prompt if title or password are not entered
         if login_title == "" or login_Password == "":
             print("Title and Password Required")
-            insert_Data(connection, password)
+            insert_Data(connection, password, database)
         else:
             insert_login(
                 connection,
@@ -272,6 +275,7 @@ def insert_Data(connection, password) -> None:
                 login_Website,
                 login_Email,
                 password,
+                database
             )
             
 
@@ -284,9 +288,9 @@ def insert_Data(connection, password) -> None:
         # re-prompt if title or note are not entered
         if Note_title == "" or Note_text == "":
             print("Title and Note Required")
-            insert_Data(connection, password)
+            insert_Data(connection, password, database)
         else:
-            insert_note(connection, Note_title, Note_text, password)
+            insert_note(connection, Note_title, Note_text, password, database)
 
     elif choice == "3":
         return
@@ -299,7 +303,7 @@ def insert_Data(connection, password) -> None:
         print()
 
         if choice == "1":
-            insert_Data(connection, password)
+            insert_Data(connection, password, database)
         elif choice == "2":
             break
         else:
@@ -316,11 +320,12 @@ def insert_login(
     login_Website,
     login_Email,
     password,
+    database
 ) -> None:
     """Inserting login credentials into Database"""
     db = connection.cursor()
     # inserting encrypted password into Passwords table
-    login_Password = encrypting_inputs(login_Password, password)
+    login_Password = encrypting_inputs(login_Password, password, database)
     db.execute(
         """INSERT OR IGNORE INTO Passwords 
                 (passwords) 
@@ -339,7 +344,7 @@ def insert_login(
     if login_Username == "":
         username_id = None
     else:
-        login_Username = encrypting_inputs(login_Username, password)
+        login_Username = encrypting_inputs(login_Username, password, database)
         db.execute(
             """INSERT OR IGNORE INTO Username 
             (username) 
@@ -358,7 +363,7 @@ def insert_login(
     if login_Email == "":
         mail_id = None
     else:
-        login_Email = encrypting_inputs(login_Email, password)
+        login_Email = encrypting_inputs(login_Email, password, database)
         db.execute(
             """INSERT OR IGNORE INTO Mails
             (mail) 
@@ -387,11 +392,11 @@ def insert_login(
     return
 
 
-def insert_note(connection, Note_title, Note_text, password) -> None:
+def insert_note(connection, Note_title, Note_text, password, database) -> None:
     db = connection.cursor()
     # SQLite does not support strings longer than 1GB, unlikely but to be safe
     try:
-        Note_text = encrypting_inputs(Note_text, password)
+        Note_text = encrypting_inputs(Note_text, password, database)
         db.execute(
             """INSERT INTO notes 
             (title, note) 
@@ -401,7 +406,7 @@ def insert_note(connection, Note_title, Note_text, password) -> None:
 
     except sqlite3.DataError:
         print("Note too Long to Store")
-        insert_Data(connection, password)
+        insert_Data(connection, password, database)
 
     connection.commit()
     print("Secure Note Saved")
@@ -410,7 +415,7 @@ def insert_note(connection, Note_title, Note_text, password) -> None:
     return
 
 
-def retrieve_Data(connection, password) -> None:
+def retrieve_Data(connection, password, database) -> None:
 
     # allows to address sql output by column name
     connection.row_factory = sqlite3.Row
@@ -425,14 +430,14 @@ def retrieve_Data(connection, password) -> None:
         choice = input("Choose: ")
         print()
         if choice == "1":  # login credentials
-            retrieve_login(connection, password)
+            retrieve_login(connection, password, database)
         if choice == "2":  # secure note
-            retrieve_note(connection, password)
+            retrieve_note(connection, password, database)
         if choice == "3":
             break
 
 
-def retrieve_login(connection, password) -> None:
+def retrieve_login(connection, password, database) -> None:
     connection.row_factory = sqlite3.Row
     db = connection.cursor()
     # setting up variables to identify the menu choice
@@ -457,14 +462,14 @@ def retrieve_login(connection, password) -> None:
         print()
         if title == "":
             print("Title Required")
-            retrieve_login(connection, password)
+            retrieve_login(connection, password, database)
 
     elif choice_search == "2":  # search by website
         website = input("Website: ")
         print()
         if website == "":
             print("Website Required")
-            retrieve_login(connection, password)
+            retrieve_login(connection, password, database)
 
     elif choice_search == "3":  # list all titles
         rows = db.execute(
@@ -473,7 +478,7 @@ def retrieve_login(connection, password) -> None:
         ).fetchall()
         pretty_print(rows)
 
-        retrieve_login(connection, password)
+        retrieve_login(connection, password, database)
 
     elif choice_search == "4":  # back
         return
@@ -511,9 +516,9 @@ def retrieve_login(connection, password) -> None:
     result = [dict(row) for row in rows]
     # decrypting the sensitive data
     for row in result:
-        row["passwords"] = decrypting_inputs(row["passwords"], password)
-        row["username"] = decrypting_inputs(row["username"], password)
-        row["mail"] = decrypting_inputs(row["mail"], password)
+        row["passwords"] = decrypting_inputs(row["passwords"], password, database)
+        row["username"] = decrypting_inputs(row["username"], password, database)
+        row["mail"] = decrypting_inputs(row["mail"], password, database)
     # prints one key/value pair per line with an \n between list items
     
     [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
@@ -523,7 +528,7 @@ def retrieve_login(connection, password) -> None:
     return
 
 
-def retrieve_note(connection, password) -> None:
+def retrieve_note(connection, password, database) -> None:
     title = None
     connection.row_factory = sqlite3.Row
     db = connection.cursor()
@@ -554,7 +559,7 @@ def retrieve_note(connection, password) -> None:
         ).fetchall()
 
         pretty_print(rows)
-        retrieve_note(connection, password)
+        retrieve_note(connection, password, database)
 
     elif choice_search == "3":  # back
         return
@@ -571,7 +576,7 @@ def retrieve_note(connection, password) -> None:
 
         result = [dict(row) for row in rows]
         for row in result:
-            row["note"] = decrypting_inputs(row["note"], password)
+            row["note"] = decrypting_inputs(row["note"], password, database)
 
         [(print(*[f"{k}: {v}" for k, v in row.items()], sep="\n")) for row in result]
 
@@ -581,7 +586,7 @@ def retrieve_note(connection, password) -> None:
 
     else:
         print("Title Required")
-        retrieve_note(connection, password)
+        retrieve_note(connection, password, database)
 
 
 def pretty_print(rows) -> None:
@@ -605,11 +610,19 @@ def create_salt(saltname) -> bytes:
     if Path(saltname).is_file():
         with open(saltname, "rb") as salt_file:
             salt = salt_file.read()
-            return salt
+            
     # if not a new salt is created
-    salt = os.urandom(16)
-    with open(saltname, "wb") as f:
-        f.write(salt)
+    else:
+        salt = os.urandom(16)
+        with open(saltname, "wb") as f:
+            f.write(salt)
+
+    # Set restrictive file permissions should work for windows apple and linux
+    if sys.platform.startswith("win"):
+        subprocess.run(f'icacls "{saltname}" /inheritance:r /grant %USERNAME%:R', shell=True, check=True)
+    else:
+        os.chmod(saltname, stat.S_IRUSR | stat.S_IWUSR) 
+
     return salt
 
 
