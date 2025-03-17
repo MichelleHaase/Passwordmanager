@@ -2,7 +2,9 @@ Database.enc
 salt.bin
 testingstuff.py
 *.db
+*.enc
 *.venv/*
 *.bin
 test_passwordmanager.py
 __pycache__/*
+

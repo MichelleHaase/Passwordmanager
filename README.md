@@ -1,5 +1,5 @@
 # Password Manager
-#### Video Demo:  <URL HERE>
+#### Video Demo:  <[URL HERE](https://youtu.be/OXylacFcLAM)>
 #### Description:
 
 This project is a password manager built in Python that securely stores and encrypts login credentials and secure notes using SQLite and the cryptography library. The main reason for choosing a functional programming approach over object-oriented programming (OOP) is simplicity and modularity. Since each function is responsible for a specific task, such as encryption, database management, or user interaction, the code remains more readable and easier to debug. A class-based structure could have been used to encapsulate the database and encryption logic, but for a relatively small project like this, functional programming keeps things straightforward.
